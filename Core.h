@@ -11,7 +11,7 @@
 #include <QString>
 #include <QList>
 #include <QTimer>
-#include <QElapsedTimer>
+#include <QTime>
 #include <QFile>
 #include <QUrl>
 #ifndef NOAUDIO
@@ -37,6 +37,7 @@ class Core : public QObject
         Core(CopyEngineManager *copyEngineList);
         ~Core();
     private:
+        bool commandLineMode;  // New flag to indicate command line mode
         CopyEngineManager *copyEngineList;
         struct RunningTransfer
         {
@@ -53,7 +54,6 @@ class Core : public QObject
         struct CopyInstance
         {
             unsigned int id;
-            QElapsedTimer lastProgressionTime;//to compute the speed in B/s
             PluginInterface_CopyEngine * engine;
             PluginInterface_Themes * interface;
             bool ignoreMode;
@@ -74,7 +74,7 @@ class Core : public QObject
             Ultracopier::CopyType type;
             Ultracopier::TransferListOperation transferListOperation;
             bool haveError;
-            QElapsedTimer lastConditionalSync;
+            QTime lastConditionalSync;
             QTimer *nextConditionalSync;
             bool copyEngineIsSync;
             bool canceled;//to not try groun when is in canceling
@@ -125,6 +125,7 @@ class Core : public QObject
         unsigned int incrementId();
         unsigned int nextId;
         std::vector<unsigned int> idList;
+        QTime lastProgressionTime;
         QTimer forUpateInformation;///< used to call \see periodicSynchronization()
         void resetSpeedDetected(const unsigned int &bindex);
 

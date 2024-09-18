@@ -13,6 +13,12 @@
 
 Core::Core(CopyEngineManager *copyEngineList)
 {
+    // Other initialization code
+    commandLineMode = false;  // Default value
+    if (QCoreApplication::arguments().size() > 1) {
+        commandLineMode = true;  // Set flag if command-line arguments are present
+    }
+
     ULTRACOPIER_DEBUGCONSOLE(Ultracopier::DebugLevel_Notice,"start");
     this->copyEngineList=copyEngineList;
     nextId=0;
@@ -59,6 +65,12 @@ void Core::newCopyWithoutDestination(const uint32_t &orderId,const std::vector<s
     copyList.back().orderId.push_back(orderId);
     copyList.back().engine->newCopy(sources);
     copyList.back().interface->haveExternalOrder();
+
+    // After the transfer finishes
+    if (commandLineMode) {
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);  // Exit after 1 second delay
+    }
+
 }
 
 void Core::newTransfer(const Ultracopier::CopyMode &mode,const uint32_t &orderId,const std::vector<std::string> &protocolsUsedForTheSources,const std::vector<std::string> &sources,const std::string &protocolsUsedForTheDestination,const std::string &destination)
@@ -121,6 +133,8 @@ void Core::newTransfer(const Ultracopier::CopyMode &mode,const uint32_t &orderId
         }
     }
     //else open new windows
+
+
     if(openNewCopyEngineInstance(mode,false,protocolsUsedForTheSources,protocolsUsedForTheDestination)==-1)
     {
         ULTRACOPIER_DEBUGCONSOLE(Ultracopier::DebugLevel_Warning,"Unable to get a engine instance");
@@ -133,11 +147,13 @@ void Core::newTransfer(const Ultracopier::CopyMode &mode,const uint32_t &orderId
     else
         copyList.back().engine->newMove(sources,destination);
     copyList.back().interface->haveExternalOrder();
+
 }
 
 void Core::newCopy(const uint32_t &orderId,const std::vector<std::string> &protocolsUsedForTheSources,const std::vector<std::string> &sources,const std::string &protocolsUsedForTheDestination,const std::string &destination)
 {
     newTransfer(Ultracopier::Copy,orderId,protocolsUsedForTheSources,sources,protocolsUsedForTheDestination,destination);
+
 }
 
 void Core::newMove(const uint32_t &orderId,const std::vector<std::string> &protocolsUsedForTheSources,const std::vector<std::string> &sources,const std::string &protocolsUsedForTheDestination,const std::string &destination)
@@ -156,6 +172,11 @@ void Core::newMoveWithoutDestination(const uint32_t &orderId,const std::vector<s
     copyList.back().orderId.push_back(orderId);
     copyList.back().engine->newMove(sources);
     copyList.back().interface->haveExternalOrder();
+
+    // After the transfer finishes
+    if (commandLineMode) {
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);  // Exit after 1 second delay
+    }
 }
 
 /// \brief name to open the right copy engine
@@ -275,6 +296,8 @@ void Core::loadInterface()
             QMessageBox::critical(NULL,tr("Error"),tr("Unable to load the interface, copy aborted"));
         }
     }
+
+
 }
 
 void Core::unloadInterface()
@@ -319,6 +342,8 @@ int Core::openNewCopyEngineInstance(const Ultracopier::CopyMode &mode,const bool
     if(returnInformations.engine==NULL)
         return -1;
     return connectCopyEngine(mode,ignoreMode,returnInformations);
+
+
 }
 
 /** open with specific copy engine
@@ -567,6 +592,7 @@ void Core::actionInProgess(const Ultracopier::EngineActionInProgress &action)
             }
         #endif
     }
+
     else
         ULTRACOPIER_DEBUGCONSOLE(Ultracopier::DebugLevel_Warning,"unable to locate the interface sender");
 }
@@ -816,15 +842,15 @@ void Core::periodicSynchronizationWithIndex(const int &index)
             currentCopyInstance.interface->remainingTime(transferAddedTime*((double)currentCopyInstance.totalProgression/(double)currentCopyInstance.currentProgression-1)/1000);*/
 
         //do the speed calculation
-        if(!currentCopyInstance.lastProgressionTime.isValid())
-            currentCopyInstance.lastProgressionTime.start();
+        if(lastProgressionTime.isNull())
+            lastProgressionTime.start();
         else
         {
             if((currentCopyInstance.action==Ultracopier::Copying || currentCopyInstance.action==Ultracopier::CopyingAndListing))
             {
-                currentCopyInstance.lastSpeedTime.push_back(currentCopyInstance.lastProgressionTime.elapsed());
+                currentCopyInstance.lastSpeedTime.push_back(lastProgressionTime.elapsed());
                 currentCopyInstance.lastSpeedDetected.push_back(diffCopiedSize);
-                currentCopyInstance.lastAverageSpeedTime.push_back(currentCopyInstance.lastProgressionTime.elapsed());
+                currentCopyInstance.lastAverageSpeedTime.push_back(lastProgressionTime.elapsed());
                 currentCopyInstance.lastAverageSpeedDetected.push_back(diffCopiedSize);
                 while(currentCopyInstance.lastSpeedTime.size()>ULTRACOPIER_MAXVALUESPEEDSTORED)
                     currentCopyInstance.lastSpeedTime.erase(currentCopyInstance.lastSpeedTime.cbegin());
@@ -928,7 +954,7 @@ void Core::periodicSynchronizationWithIndex(const int &index)
                         {}//error case
                     }
             }
-            currentCopyInstance.lastProgressionTime.restart();
+            lastProgressionTime.restart();
         }
     }
 }
